@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -40,14 +41,26 @@ func main() {
 		cmd = exec.Command("git", "rev-parse", "HEAD")
 		cmd.Dir = ruta
 		salida, err := cmd.Output()
+		salida = []byte(strings.TrimSpace(string(salida)))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		fmt.Println(strings.TrimSpace(string(salida)))
-		fmt.Println(ruta)
+		nombreRepo := path.Base(repo)
+		nombreRepo = strings.TrimSuffix(nombreRepo, ".git")
 
-		fmt.Println("desplegando:", repo)
+		nombreRepo = strings.ToLower(nombreRepo)
+
+		imagen := fmt.Sprintf("mh/%s:%s", nombreRepo, salida)
+
+		cmdDocker := exec.Command("docker", "build", "-t", imagen, ruta)
+		cmdDocker.Stdout = os.Stdout
+		cmdDocker.Stderr = os.Stderr
+		err = cmdDocker.Run()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 
 	default:
 		fmt.Fprintf(os.Stderr, "error: comando desconocido %q\n", comando)
